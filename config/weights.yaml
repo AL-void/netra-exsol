@@ -1,0 +1,17 @@
+fragility_weights:
+  num_alternatives: 0.30
+  backup_unavailability: 0.30
+  critical_dependency: 0.20
+  population_no_alt: 0.20
+
+impact_weights:
+  pop_impact: 0.30
+  critical_facilities: 0.25
+  vulnerable_pop: 0.15
+  fragility: 0.20
+  emergency_severity: 0.10
+
+normalization:
+  max_population: 100000
+  max_facility_weight_sum: 50
+  max_flood_level: 5.0
