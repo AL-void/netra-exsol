@@ -1,6 +1,6 @@
 import pyexasol
-import pandas as pd
 import ssl
+import pandas as pd
 
 def get_exasol_connection():
     return pyexasol.connect(
@@ -66,3 +66,7 @@ def simulate_flood_impact(flood_level_meters: float):
     df = conn.export_to_pandas(query)
     conn.close()
     return df
+if __name__ == "__main__":
+    df = fetch_failed_towers_and_facilities()
+    print("\n--- Live Data Extracted from Exasol ---")
+    print(df)
