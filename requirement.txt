@@ -1,7 +1,0 @@
-pyexasol
-pandas
-streamlit
-folium
-streamlit-folium
-scipy
-networkx

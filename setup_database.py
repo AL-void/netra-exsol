@@ -1,17 +1,24 @@
 import pyexasol
 import ssl
 
-# 1. Establish connection to Exasol Personal Local
-C = pyexasol.connect(
-    dsn='localhost:8563',
-    user='sys',
-    password='exasol',
-    encryption=True,
-    websocket_sslopt={'cert_reqs': ssl.CERT_NONE}
-)
+# Try connecting with encryption bypass, fallback to unencrypted if local Docker requires it
+try:
+    C = pyexasol.connect(
+        dsn='localhost:8563',
+        user='sys',
+        password='exasol',
+        encryption=False
+    )
+except Exception:
+    C = pyexasol.connect(
+        dsn='localhost:8563',
+        user='sys',
+        password='exasol',
+        encryption=True,
+        websocket_sslopt={'cert_reqs': ssl.CERT_NONE}
+    )
 
 print("Connected to Exasol successfully!")
-
 # 2. Create Schema
 C.execute("CREATE SCHEMA IF NOT EXISTS NETRA;")
 C.execute("OPEN SCHEMA NETRA;")

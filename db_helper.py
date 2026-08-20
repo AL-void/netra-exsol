@@ -3,14 +3,23 @@ import ssl
 import pandas as pd
 
 def get_exasol_connection():
-    return pyexasol.connect(
-        dsn='localhost:8563',
-        user='sys',
-        password='exasol',
-        schema='NETRA',
-        encryption=True,
-        websocket_sslopt={'cert_reqs': ssl.CERT_NONE}
-    )
+    try:
+        return pyexasol.connect(
+            dsn='localhost:8563',
+            user='sys',
+            password='exasol',
+            schema='NETRA',
+            encryption=False
+        )
+    except Exception:
+        return pyexasol.connect(
+            dsn='localhost:8563',
+            user='sys',
+            password='exasol',
+            schema='NETRA',
+            encryption=True,
+            websocket_sslopt={'cert_reqs': ssl.CERT_NONE}
+        )
 
 def fetch_failed_towers_and_facilities():
     """Returns broken towers joined with affected facilities."""
