@@ -1,29 +1,36 @@
 import pyexasol
 import ssl
+import time
 
-# Try connecting with encryption bypass, fallback to unencrypted if local Docker requires it
-try:
-    C = pyexasol.connect(
-        dsn='localhost:8563',
-        user='sys',
-        password='exasol',
-        encryption=False
-    )
-except Exception:
-    C = pyexasol.connect(
-        dsn='localhost:8563',
-        user='sys',
-        password='exasol',
-        encryption=True,
-        websocket_sslopt={'cert_reqs': ssl.CERT_NONE}
-    )
+print("Connecting to Exasol Personal on port 8563...")
 
-print("Connected to Exasol successfully!")
-# 2. Create Schema
+C = None
+max_retries = 12
+
+for attempt in range(1, max_retries + 1):
+    try:
+        # Standard Exasol connection options
+        C = pyexasol.connect(
+            dsn="localhost:8563",
+            user="sys",
+            password="exasol",
+            encryption=True,
+            websocket_sslopt={"cert_reqs": ssl.CERT_NONE, "check_hostname": False},
+        )
+        print(f"Connected to Exasol successfully on attempt {attempt}!")
+        break
+    except Exception as e:
+        print(f"[{attempt}/{max_retries}] Exasol still spinning up DB service ({e})... retrying in 5s")
+        time.sleep(5)
+
+if C is None:
+    raise SystemExit("Exasol DB not ready. Run 'docker logs exasol_netra --tail 20' to check status.")
+
+# 1. Initialize Schema
 C.execute("CREATE SCHEMA IF NOT EXISTS NETRA;")
 C.execute("OPEN SCHEMA NETRA;")
 
-# 3. Create Tables
+# 2. Create Tables
 C.execute("""
 CREATE OR REPLACE TABLE cell_towers (
     tower_id VARCHAR(10) PRIMARY KEY,
@@ -32,7 +39,7 @@ CREATE OR REPLACE TABLE cell_towers (
     longitude DECIMAL(9,6),
     coverage_radius_km DECIMAL(4,2),
     elevation_meters DECIMAL(5,2),
-    battery_backup_hours INT,
+    battery_backup_hours DECIMAL(18,0),
     status VARCHAR(20) DEFAULT 'ACTIVE'
 );
 """)
@@ -68,8 +75,7 @@ CREATE OR REPLACE TABLE repair_crews (
 );
 """)
 
-print("Tables created successfully.")
-# 25 Realistic Towers across Bengaluru with flood elevations
+# 3. Load Bengaluru Dataset
 towers_data = [
     ('T01', 'Indiranagar 100ft Rd', 12.9784, 77.6408, 2.5, 3.2, 8, 'FAILED'),
     ('T02', 'Old Airport Road Junction', 12.9600, 77.6480, 3.0, 0.8, 4, 'FAILED'),
@@ -99,7 +105,6 @@ towers_data = [
 ]
 C.import_from_iterable(towers_data, 'cell_towers')
 
-# 12 Critical Lifeline Facilities
 facilities_data = [
     ('F01', 'Manipal Hospital (ICU/Trauma)', 'HOSPITAL', 12.9592, 77.6475, 50),
     ('F02', 'Domlur Emergency Flood Shelter', 'SHELTER', 12.9615, 77.6350, 30),
@@ -116,27 +121,25 @@ facilities_data = [
 ]
 C.import_from_iterable(facilities_data, 'critical_facilities')
 
-# Connectivity & Redundancy Link Matrix
 connectivity_data = [
-    ('F01', 'T02', True),   # Manipal Hospital on T02 (Failed)
-    ('F01', 'T03', False),  # Manipal Hospital backup on T03 (Active)
-    ('F02', 'T03', True),   # Domlur Shelter on T03
-    ('F03', 'T04', True),   # Fire Station on T04 (Failed - Zero Redundancy!)
-    ('F04', 'T05', True),   # Bowring on T05
-    ('F05', 'T07', True),   # Sakra on T07 (Failed)
-    ('F05', 'T11', False),  # Sakra backup on T11 (Failed - Complete Blackout!)
-    ('F06', 'T04', True),   # St Johns on T04 (Failed)
-    ('F06', 'T15', False),  # St Johns backup on T15 (Failed - Complete Blackout!)
-    ('F07', 'T07', True),   # Bellandur Shelter on T07 (Failed)
-    ('F08', 'T10', True),   # HSR Shelter on T10
-    ('F09', 'T02', True),   # HAL Fire on T02 (Failed)
-    ('F10', 'T12', True),   # Columbia Asia on T12
-    ('F11', 'T09', True),   # Silk Board Shelter on T09 (Failed)
-    ('F12', 'T24', True)    # Victoria on T24
+    ('F01', 'T02', True),
+    ('F01', 'T03', False),
+    ('F02', 'T03', True),
+    ('F03', 'T04', True),
+    ('F04', 'T05', True),
+    ('F05', 'T07', True),
+    ('F05', 'T11', False),
+    ('F06', 'T04', True),
+    ('F06', 'T15', False),
+    ('F07', 'T07', True),
+    ('F08', 'T10', True),
+    ('F09', 'T02', True),
+    ('F10', 'T12', True),
+    ('F11', 'T09', True),
+    ('F12', 'T24', True)
 ]
 C.import_from_iterable(connectivity_data, 'facility_connectivity')
 
-# 5 Special Response Repair Crews
 crews_data = [
     ('C1', 'Alpha Rapid Response (GenSet)', 12.9716, 77.5946, 'GENERATOR_CREW', 'AVAILABLE'),
     ('C2', 'Bravo Amphibious Rescue Team', 12.9300, 77.6100, 'BOAT_UNIT', 'AVAILABLE'),
@@ -145,5 +148,35 @@ crews_data = [
     ('C5', 'Echo Heavy Power Logistics', 13.0300, 77.5800, 'GENERATOR_CREW', 'AVAILABLE')
 ]
 C.import_from_iterable(crews_data, 'repair_crews')
-print("All sample data successfully loaded into Exasol Personal!")
+
+# 4. Create Analytical View
+C.execute("""
+CREATE OR REPLACE VIEW v_tower_impact_summary AS
+SELECT
+    t.tower_id,
+    t.tower_name,
+    t.latitude,
+    t.longitude,
+    t.coverage_radius_km,
+    t.elevation_meters,
+    t.battery_backup_hours,
+    t.status,
+    COUNT(f.facility_id) AS total_connected_facilities,
+    COALESCE(SUM(f.lifeline_weight), 0) AS total_lifeline_weight,
+    SUM(CASE WHEN fc.is_primary_link = TRUE THEN 1 ELSE 0 END) AS primary_dependent_facilities
+FROM cell_towers t
+LEFT JOIN facility_connectivity fc ON t.tower_id = fc.tower_id
+LEFT JOIN critical_facilities f ON fc.facility_id = f.facility_id
+GROUP BY
+    t.tower_id,
+    t.tower_name,
+    t.latitude,
+    t.longitude,
+    t.coverage_radius_km,
+    t.elevation_meters,
+    t.battery_backup_hours,
+    t.status;
+""")
+
+print("All tables, dataset, and analytical views successfully loaded into Exasol!")
 C.close()

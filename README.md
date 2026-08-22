@@ -5,8 +5,8 @@ License: MIT | Python 3.10+ | Database: Exasol Personal Local
 
 ## ?? Quick Links
 - **GitHub Repo:** https://github.com/AL-void/netra-exsol
-- **Demo Video (3 min):** [Insert YouTube/Loom Link]
-- **Pitch Deck:** Located in \`docs/pitch_deck.pdf\`
+- **Demo Video (3 min):** [Watch Live Walkthrough Video](https://youtu.be/your_actual_video_id)
+- **Pitch Deck (PDF):** Available in [\`docs/pitch_deck.pdf\`](docs/pitch_deck.pdf)
 
 ---
 
@@ -29,8 +29,8 @@ Exasol Personal serves as the in-memory analytical backbone:
 
 ## ??? Tech Stack
 - **Database Engine:** Exasol Personal Edition (Docker Local)
-- **Data Access Layer:** \`pyexasol\` (WebSocket connector)
-- **Decision Engine:** NetworkX, SciPy (Hungarian Algorithm for crew dispatch), Pydantic, NumPy
+- **Data Access Layer:** \`pyexasol\` (WebSocket connector with SSL handling)
+- **Decision Engine:** NetworkX, SciPy (Optimization), Pydantic, NumPy
 - **Command Center UI:** Streamlit & Folium
 
 ---
