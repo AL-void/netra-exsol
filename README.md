@@ -5,7 +5,7 @@ License: MIT | Python 3.10+ | Database: Exasol Personal Local
 
 ## 🌐 Quick Links
 - **GitHub Repo:** https://github.com/AL-void/netra-exsol
-- **Demo Video (3 min):** [Watch Live Walkthrough Video](https://youtu.be/your_actual_video_id)
+- **Demo Video (3 min):** [Watch Live Walkthrough Video](https://drive.google.com/file/d/1jC7nBma_LIifbCslI3eGKlZQEtq_Y0l9/view?usp=sharing)
 - **Pitch Deck (PDF):** Available in [`docs/pitch_deck.pdf`](docs/pitch_deck.pdf)
 
 ---
